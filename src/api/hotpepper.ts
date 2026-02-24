@@ -1,8 +1,9 @@
 const API_KEY = import.meta.env.VITE_HOT_PEPPER_KEY as string;
-// In production (GitHub Pages), set VITE_API_BASE_URL to your CORS proxy URL
-// (e.g. a Cloudflare Worker). In development the Vite proxy handles /api/hotpepper.
-const BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string) || "/api/hotpepper/";
+const HOTPEPPER_API = "https://webservice.recruit.co.jp/hotpepper/gourmet/v1/";
+// Set VITE_API_BASE_URL to a CORS proxy (e.g. https://corsproxy.io/) for
+// production deployments like GitHub Pages. Leave unset in dev — the Vite
+// proxy handles it.
+const PROXY_BASE = import.meta.env.VITE_API_BASE_URL as string | undefined;
 
 export interface Restaurant {
   id: string;
@@ -107,7 +108,14 @@ export async function searchRestaurants(
     ...(flag(params.parking) && { parking: "1" }),
   });
 
-  const res = await fetch(`${BASE_URL}?${query.toString()}`);
+  // In dev, hit the Vite proxy directly.
+  // In production, wrap the full target URL for the CORS proxy.
+  const targetUrl = `${HOTPEPPER_API}?${query.toString()}`;
+  const fetchUrl = PROXY_BASE
+    ? `${PROXY_BASE}?url=${encodeURIComponent(targetUrl)}`
+    : `/api/hotpepper/?${query.toString()}`;
+
+  const res = await fetch(fetchUrl);
   if (!res.ok) {
     throw new Error(`HTTP error: ${res.status}`);
   }
